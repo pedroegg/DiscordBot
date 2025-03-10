@@ -10,24 +10,33 @@ if os.getenv("ENV") != "production":
 
 # ------ init project ------
 import logging
-logging.basicConfig(level=int(os.getenv('LOG_LEVEL')), force=True)
+logging.basicConfig(
+	level=int(os.getenv('LOG_LEVEL', '20')),
+	stream=sys.stdout,
+	format='%(asctime)s %(levelname)s %(name)s: %(message)s',
+	datefmt='%Y/%m/%d %H:%M:%S',
+	force=True,
+)
+
 logger = logging.getLogger("Main")
-
-# omitting libs DEBUG logs when in dev
-logging.getLogger("urllib3").setLevel(logging.INFO)
-
 logger.info('intializing...')
 
-import threading
+# omitting libs DEBUG logs when in dev
+logging.getLogger('urllib3').setLevel(logging.INFO)
+logging.getLogger('asyncio').setLevel(logging.INFO)
+logging.getLogger('discord').setLevel(logging.INFO)
+
+from library.discord.bot import Bot
+bot = Bot()
+
 import signal
-
-#from library.demucs import HTdemucs, HTdemucs6s, _DemucsProcessor, ProcessPayload
-
-stop_event = threading.Event()
+import asyncio
 
 def signal_handler(sig, frame):
 	logger.info('signal received, finishing application gracefully...')
-	stop_event.set()
+
+	if not bot.is_closed():
+		bot.loop.call_soon_threadsafe(lambda: asyncio.create_task(bot.close()))
 
 signal.signal(signal.SIGINT, signal_handler)
 signal.signal(signal.SIGTERM, signal_handler)
@@ -37,8 +46,11 @@ logger.info('init completed!')
 
 # ------ running project -------
 def run():
-	#while not stop_event.is_set():
-	a = 1
+	try:
+		bot.run()
+	
+	except Exception as e:
+		logger.error(f'unexpected error: {repr(e)}')
 
 if __name__ == "__main__":
 	run()
