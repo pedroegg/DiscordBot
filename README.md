@@ -1,1 +1,3 @@
 # DiscordBot
+
+Incomplete. Doing...
